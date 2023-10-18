@@ -6,16 +6,10 @@ import math as m
 import rotate as r
 import matplotlib.pyplot as plt
 import matplotlib.animation as ani_plt
-import pack_process as p_proc
+import controller as ctrl
 import connection as conn
 
-
-current_attitude = p_proc.CurrentAttitude()
-target_attitude = p_proc.TargetAttitude()
-data_obj_dict = {"target_attitude": target_attitude,
-                 "current_attitude": current_attitude,
-                 }
-
+thread_pool = []
 
 def debug():
     while True:
@@ -37,18 +31,21 @@ def debug():
 debug_thread = threading.Thread(target= debug)
 debug_thread.start()
 
-drone_connection = conn.DroneConnection("0.0.0.0", 9000, data_obj_dict)
-#drone_connection_thread = threading.Thread(target= drone_connection.connectionHandler)
-#drone_connection_thread.start()
 
-app_connection = conn.AppConnection("0.0.0.0", 9001, data_obj_dict)
-#app_connection_thread = threading.Thread(target= app_connection.connectionHandler)
-#app_connection_thread.start()
+controller = ctrl.Controller()
+
+
+drone_connection = conn.DroneConnection("172.16.0.171", 9000, controller, thread_pool)
+
+app_connection = conn.AppConnection("0.0.0.0", 9001, controller, thread_pool)
+
+
 
 
 
 def upd_view(frame):
-    q = data_obj_dict["current_attitude"].get()
+    q = controller.current_attitude.get()
+    #q = np.array([1, 0, 0, 0])
     vx = r.qv_mult(q , np.array([1,0,0]))
     vy = r.qv_mult(q , np.array([0,1,0]))
     vz = r.qv_mult(q , np.array([0,0,1]))
@@ -75,10 +72,16 @@ def upd_view(frame):
 
 fig = plt.figure()
 ax = fig.add_subplot(projection='3d')
-ani = ani_plt.FuncAnimation(fig, upd_view, interval=50)
+#ani = ani_plt.FuncAnimation(fig, upd_view, interval=50)
 
-plt.show()
+#plt.show()
 
+for thread in thread_pool:
+    thread.start()
+
+
+for thread in thread_pool:
+    thread.join()
 
 while True:
-    a = 1
+    a = 0
