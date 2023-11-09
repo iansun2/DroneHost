@@ -11,30 +11,28 @@ class DroneConnection():
         self.host = host
         self.port = port
         self.controller = controller
-        self.send_interval = 0.01
 
         # connection_thread
-        thread_pool.append(threading.Thread(target= self.connectionHandler))
+        thread_pool.append(threading.Thread(target= self.connection_handler))
 
 
 
-    def connectionHandler(self):
+    def connection_handler(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.setblocking(False)
 
-        last_tx_time = 0
         last_cnt_print_time = 0
         rx_cnt = 0
 
         while True:
             tx_time = time.time()
-            if(tx_time - last_tx_time > self.send_interval):
-                last_tx_time = tx_time
-                send_str = self.controller.droneTxPack(tx_time)
-                if(send_str == ""):
-                    send_str = "ping,0,0\n"
-                s.sendto(send_str.encode("ascii"), (self.host,self.port))
-                #print("tx!", time.time())
+
+            tx_str = self.controller.get_drone_tx_pack(tx_time)
+            if(tx_str != ""):
+                self.controller.ping.set_last_tx_timer(tx_time)
+                s.sendto(tx_str.encode("ascii"), (self.host,self.port))
+                #if(tx_str.find("rst_att") != -1):
+                #    print(tx_str)
 
             try:
                 rx_data, addr = s.recvfrom(1024)
@@ -44,7 +42,7 @@ class DroneConnection():
                     for raw_pack in raw_packs:
                         pack = raw_pack.split(',')
                         #print(pack)
-                        self.controller.droneRxPack(pack)
+                        self.controller.rx_pack_sel(pack)
 
                     if(time.time() - last_cnt_print_time > 1):
                         last_cnt_print_time = time.time()
@@ -67,10 +65,10 @@ class AppConnection():
         self.controller = controller
 
         # connection_thread
-        thread_pool.append(threading.Thread(target= self.connectionHandler))
+        thread_pool.append(threading.Thread(target= self.connection_handler))
 
 
-    def connectionHandler(self):
+    def connection_handler(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.bind((self.host, self.port))
 
@@ -84,7 +82,7 @@ class AppConnection():
                 raw_packs = rx_data.splitlines()
                 for raw_pack in raw_packs:
                     pack = raw_pack.split(',')
-                    self.controller.appRxPack(pack)
+                    self.controller.rx_pack_sel(pack)
 
             if(time.time() - last_cnt_print_time > 1):
                 last_cnt_print_time = time.time()
@@ -93,9 +91,11 @@ class AppConnection():
             else:
                 rx_cnt += 1
 
-            tx_data = self.controller.appTxPack(time.time())
-            if(tx_data != ""):
-                s.sendto(tx_data.encode("ascii"), addr)
+            tx_str = self.controller.get_app_tx_pack(time.time())
+            if(tx_str != ""):
+                s.sendto(tx_str.encode("ascii"), addr)
+                #if(tx_str.find("c_att") != -1):
+                #    print(tx_str)
 
             
 

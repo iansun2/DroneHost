@@ -36,6 +36,7 @@ controller = ctrl.Controller()
 
 
 drone_connection = conn.DroneConnection("172.16.0.171", 9000, controller, thread_pool)
+#drone_connection = conn.DroneConnection("127.0.0.1", 9000, controller, thread_pool)
 
 app_connection = conn.AppConnection("0.0.0.0", 9001, controller, thread_pool)
 
